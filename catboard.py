@@ -75,7 +75,7 @@ class catboard(object):
         else:
             return False
 
-    def add_new_gen_sel(self):
+    def add_new_gen(self):
         assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
         current_cats = self.CAT_STATES[-1]
         cat_colors = Counter([cat[2] for cat in current_cats])
@@ -99,6 +99,70 @@ class catboard(object):
                     cat_topy = int(cat_i*self.MARGIN + (cat_i - 1)*self.CAT_SIZE)
                     new_gen.append([cat_topx, cat_topy, cat_color[0]])
         self.CAT_STATES.append(new_gen)
+
+    def add_new_gen_fancy(self):
+        assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
+        current_cats = self.CAT_STATES[-1]
+        cat_colors = Counter([cat[2] for cat in current_cats])
+        cat_color_prs = sorted([(cat_color,
+                                 float(cat_colors[cat_color]*
+                                       self.COLOR_FIT[cat_color]/(self.NCATS -
+                                                                  cat_colors[cat_color]
+                                                                  + cat_colors[cat_color]*
+                                                                  self.COLOR_FIT[cat_color])))
+                                for cat_color in cat_colors.keys()])
+        new_color_counts = np.random.multinomial(self.NCATS,
+                                                 [cat_color_pr[1] for
+                                                  cat_color_pr in cat_color_prs])
+        # Assign a number of offspring to each cat
+        color_indv_offspring = {}
+        for idx, cat_color in enumerate(cat_color_prs):
+            if new_color_counts[idx] > 0:
+                color_indv_offspring[cat_color[0]] = np.random.multinomial(new_color_counts[idx],
+                                                                        [1./cat_colors[cat_color[0]]]*
+                                                                        cat_colors[cat_color[0]])
+            else:
+                color_indv_offspring[cat_color[0]] = [0]*cat_colors[cat_color[0]]
+        new_gen = []
+        new_cat_i = 1
+        current_cat_i = {}
+        cat_topx = int(self.DISPLAYSURF.get_width() - self.MARGIN - self.CAT_SIZE)
+        for cat_color in cat_colors.keys():
+            current_cat_i[cat_color] = 0
+        cat_lineage = []
+        for cat in current_cats:
+            cat_babies = []
+            current_cat_color = cat[2]
+            num_offspring = color_indv_offspring[current_cat_color][current_cat_i[current_cat_color]]
+            for baby_i in range(num_offspring):
+                cat_topy = int(new_cat_i*self.MARGIN + (new_cat_i - 1)*self.CAT_SIZE)
+                new_gen.append([cat_topx, cat_topy, current_cat_color])
+                cat_babies.append([cat_topx, cat_topy, current_cat_color])
+                new_cat_i += 1
+            current_cat_i[current_cat_color] += 1
+            cat_lineage.append(cat_babies)
+
+        self.animate_next_gen(cat_lineage, 10, 10)
+        self.CAT_STATES.append(new_gen)
+        return cat_lineage
+
+    def animate_next_gen(self, cat_lineage, steps, fps):
+        for ii in range(1, steps + 1):
+            self.DISPLAYSURF.fill(self.BGCOLOR)
+            self.draw_current("middle")
+            current_cats = self.CAT_STATES[-1]
+            for idx, cat in enumerate(current_cats):
+                old_x = cat[0]
+                old_y = cat[1]
+                for baby_idx, baby_cat in enumerate(cat_lineage[idx]):
+                    new_x = baby_cat[0]
+                    new_y = baby_cat[1]
+                    x = int(old_x + (float(ii)/steps)*(new_x - old_x))
+                    y = int(old_y + (float(ii)/steps)*(new_y - old_y))
+                    drawCat(x, y, self.CAT_SIZE, "middle", self.DISPLAYSURF, baby_cat[2])
+            pygame.display.update()
+            self.FPSCLOCK.tick(fps)
+
 
 def drawCat(topx, topy, width, position, surf, cat_color):
     BLACK = (0, 0, 0)

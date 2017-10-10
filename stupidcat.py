@@ -36,13 +36,12 @@ def main():
                 CATBOARD.COLOR_FIT[new_cat_color] = 1.
             elif event.type == KEYUP and event.key == K_RSHIFT and not CATBOARD.is_poly():
                 new_cat_color = random_tab20()
-                print(new_cat_color)
                 CATBOARD.mutate_cats(0.1, new_cat_color)
                 CATBOARD.COLOR_FIT[new_cat_color] = 1.5
 
         CATBOARD.wiggle_cats(10)
         CATBOARD.backshift()
-        CATBOARD.add_new_gen_sel()
+        CATBOARD.add_new_gen_fancy()
         if not CATBOARD.is_poly():
             CATBOARD.COLOR_FIT = {CATBOARD.CAT_STATES[-1][0][2]:1.}
 
