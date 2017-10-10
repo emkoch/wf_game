@@ -32,9 +32,6 @@ def main():
                 sys.exit()
             elif event.type == KEYUP and event.key == K_SPACE and not CATBOARD.is_poly():
                 new_cat_color = random_tab20()
-                new_cat_color = (random.randint(0, 255),
-                                 random.randint(0, 255),
-                                 random.randint(0, 255))
                 CATBOARD.mutate_cats(0.5, new_cat_color)
                 CATBOARD.COLOR_FIT[new_cat_color] = 1.
             elif event.type == KEYUP and event.key == K_RSHIFT and not CATBOARD.is_poly():
