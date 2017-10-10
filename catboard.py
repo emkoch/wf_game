@@ -75,27 +75,6 @@ class catboard(object):
         else:
             return False
 
-    def add_new_gen(self):
-        assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
-        current_cats = self.CAT_STATES[-1]
-        cat_colors = Counter([cat[2] for cat in current_cats])
-        cat_color_prs = sorted([(cat_color, float(cat_colors[cat_color])/self.NCATS)
-                                for cat_color in cat_colors.keys()])
-        new_color_counts = np.random.multinomial(self.NCATS,
-                                                 [cat_color_pr[1] for
-                                                  cat_color_pr in cat_color_prs])
-        new_gen = []
-        cat_i = 0
-        cat_topx = int(self.DISPLAYSURF.get_width() - self.MARGIN - self.CAT_SIZE)
-        print(new_color_counts)
-        for idx, cat_color in enumerate(cat_color_prs):
-            if new_color_counts[idx] > 0:
-                cat_i += 1
-                for cat_i in range(cat_i, cat_i + new_color_counts[idx]):
-                    cat_topy = int(cat_i*self.MARGIN + (cat_i - 1)*self.CAT_SIZE)
-                    new_gen.append([cat_topx, cat_topy, cat_color[0]])
-        self.CAT_STATES.append(new_gen)
-
     def add_new_gen_sel(self):
         assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
         current_cats = self.CAT_STATES[-1]
