@@ -7,23 +7,30 @@ import random
 
 
 class catboard(object):
-    def __init__(self, surf, default_catcolor, num_cats, bgcolor, fpsclock):
+    def __init__(self, surf, default_catcolor, num_cats, bgcolor, textcolor, fpsclock, offset_frac,
+                 font):
         self.DISPLAYSURF = surf
+        self.WIDTH = self.DISPLAYSURF.get_width()
+        self.TOP_OFFSET = int(self.DISPLAYSURF.get_height()*offset_frac)
+        self.HEIGHT = self.DISPLAYSURF.get_height()
         self.BGCOLOR = bgcolor
+        self.TEXTCOLOR = textcolor
         self.FPSCLOCK = fpsclock
         self.DEFAULT_CATCOLOR = default_catcolor
         self.NCATS = num_cats
-        self.CAT_SIZE = int(surf.get_height() / ((11.*num_cats + 1)/10.))
-        self.MARGIN = int(float(self.CAT_SIZE)/10.) + 1
+        self.CAT_SIZE = int((self.HEIGHT - self.TOP_OFFSET) / ((11.*num_cats + 1)/10.))
+        self.MARGIN = int(float(self.CAT_SIZE)/10.)
         self.CAT_STATES = self.initialize_cat_states()
         self.COLOR_FIT = {self.DEFAULT_CATCOLOR:1.}
+        self.NUM_GEN = 0
+        self.FONT = font
 
     def initialize_cat_states(self):
         # Start off by putting a column of cats at the right side of the screen
         result = [[]]
         for cat_i in range(1, self.NCATS + 1):
-            cat_topx = int(self.DISPLAYSURF.get_width() - self.MARGIN - self.CAT_SIZE)
-            cat_topy = int(cat_i*self.MARGIN + (cat_i - 1)*self.CAT_SIZE)
+            cat_topx = int(self.WIDTH - self.MARGIN - self.CAT_SIZE)
+            cat_topy = int(cat_i*self.MARGIN + (cat_i - 1)*self.CAT_SIZE + self.TOP_OFFSET)
             result[0].append([cat_topx, cat_topy, self.DEFAULT_CATCOLOR])
         return result
 
@@ -37,6 +44,8 @@ class catboard(object):
         for pos in ["out", "middle", "in", "middle"]*iterations:
             self.DISPLAYSURF.fill(self.BGCOLOR)
             self.draw_current(pos)
+            draw_num_gen(self.DISPLAYSURF, self.NUM_GEN, self.TOP_OFFSET,
+                         self.FONT, self.TEXTCOLOR, self.BGCOLOR)
             pygame.display.update()
             self.FPSCLOCK.tick(fps)
 
@@ -75,31 +84,6 @@ class catboard(object):
         else:
             return False
 
-    def add_new_gen(self):
-        assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
-        current_cats = self.CAT_STATES[-1]
-        cat_colors = Counter([cat[2] for cat in current_cats])
-        cat_color_prs = sorted([(cat_color,
-                                 float(cat_colors[cat_color]*
-                                       self.COLOR_FIT[cat_color]/(self.NCATS -
-                                                                  cat_colors[cat_color]
-                                                                  + cat_colors[cat_color]*
-                                                                  self.COLOR_FIT[cat_color])))
-                                for cat_color in cat_colors.keys()])
-        new_color_counts = np.random.multinomial(self.NCATS,
-                                                 [cat_color_pr[1] for
-                                                  cat_color_pr in cat_color_prs])
-        new_gen = []
-        cat_i = 0
-        cat_topx = int(self.DISPLAYSURF.get_width() - self.MARGIN - self.CAT_SIZE)
-        for idx, cat_color in enumerate(cat_color_prs):
-            if new_color_counts[idx] > 0:
-                cat_i += 1
-                for cat_i in range(cat_i, cat_i + new_color_counts[idx]):
-                    cat_topy = int(cat_i*self.MARGIN + (cat_i - 1)*self.CAT_SIZE)
-                    new_gen.append([cat_topx, cat_topy, cat_color[0]])
-        self.CAT_STATES.append(new_gen)
-
     def add_new_gen_fancy(self):
         assert len(self.CAT_STATES) > 0, "ran out of cats!!!"
         current_cats = self.CAT_STATES[-1]
@@ -126,7 +110,7 @@ class catboard(object):
         new_gen = []
         new_cat_i = 1
         current_cat_i = {}
-        cat_topx = int(self.DISPLAYSURF.get_width() - self.MARGIN - self.CAT_SIZE)
+        cat_topx = int(self.WIDTH - self.MARGIN - self.CAT_SIZE)
         for cat_color in cat_colors.keys():
             current_cat_i[cat_color] = 0
         cat_lineage = []
@@ -135,7 +119,7 @@ class catboard(object):
             current_cat_color = cat[2]
             num_offspring = color_indv_offspring[current_cat_color][current_cat_i[current_cat_color]]
             for baby_i in range(num_offspring):
-                cat_topy = int(new_cat_i*self.MARGIN + (new_cat_i - 1)*self.CAT_SIZE)
+                cat_topy = int(new_cat_i*self.MARGIN + (new_cat_i - 1)*self.CAT_SIZE + self.TOP_OFFSET)
                 new_gen.append([cat_topx, cat_topy, current_cat_color])
                 cat_babies.append([cat_topx, cat_topy, current_cat_color])
                 new_cat_i += 1
@@ -144,11 +128,14 @@ class catboard(object):
 
         self.animate_next_gen(cat_lineage, 10, 10)
         self.CAT_STATES.append(new_gen)
+        self.NUM_GEN += 1
         return cat_lineage
 
     def animate_next_gen(self, cat_lineage, steps, fps):
         for ii in range(1, steps + 1):
             self.DISPLAYSURF.fill(self.BGCOLOR)
+            draw_num_gen(self.DISPLAYSURF, self.NUM_GEN, self.TOP_OFFSET,
+                         self.FONT, self.TEXTCOLOR, self.BGCOLOR)
             self.draw_current("middle")
             current_cats = self.CAT_STATES[-1]
             for idx, cat in enumerate(current_cats):
@@ -163,6 +150,17 @@ class catboard(object):
             pygame.display.update()
             self.FPSCLOCK.tick(fps)
 
+def setup_text(font, text, color, bgcolor, top, left):
+    textSurf = font.render(text, True, color)
+    textRect = textSurf.get_rect()
+    textRect.x = top
+    textRect.y = left
+    return textSurf, textRect
+
+def draw_num_gen(surf, num_gen, bar_height, font, TEXTCOLOR, BGCOLOR):
+    textSurf, textRect = setup_text(font,
+                                    "# of generations: " + str(num_gen), TEXTCOLOR, BGCOLOR, 0, 0)
+    surf.blit(textSurf, textRect)
 
 def drawCat(topx, topy, width, position, surf, cat_color):
     BLACK = (0, 0, 0)
